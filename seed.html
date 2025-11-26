@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Seed Algorithm</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0f;
+            overflow: hidden;
+            font-family: Georgia, serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .message {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 12px;
+            text-align: center;
+            letter-spacing: 2px;
+            pointer-events: none;
+        }
+
+        .quote-container {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: none;
+            max-width: 500px;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+        }
+
+        .quote-container.visible {
+            opacity: 1;
+        }
+
+        .quote-text {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 15px;
+            font-style: italic;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        .quote-source {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 11px;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="quote-container" id="quoteContainer">
+        <div class="quote-text" id="quoteText"></div>
+        <div class="quote-source" id="quoteSource"></div>
+    </div>
+    <div class="message">click to plant a seed</div>
+    <div id="perfMonitor" style="
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(0,0,0,0.7);
+        color: #0f0;
+        font-family: monospace;
+        font-size: 12px;
+        padding: 8px 12px;
+        border-radius: 4px;
+        pointer-events: none;
+        z-index: 1000;
+    "></div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+    /**
+     * ============================================================================
+     * THE SEED ALGORITHM
+     * ============================================================================
+     *
+     * This is not an invention. It's a recognition.
+     *
+     * A seed is miraculous. I can't make one. I can plant one.
+     * The multiplication comes from somewhere else. My job is to not get in
+     * the way. To put the seed where sun and water can reach it. To clear
+     * the weeds.
+     *
+     * ============================================================================
+     * THREE TRUTHS ALREADY PLANTED IN CREATION
+     * ============================================================================
+     *
+     * 1. THE REALITY OF ENOUGH
+     *    -----------------------
+     *    There is a point of satiation. Every creature has it.
+     *    The lion doesn't kill more than it can eat.
+     *    The tree doesn't grow beyond what its roots can support.
+     *    The human body signals fullness.
+     *
+     *    Contentment is real. Enough is actual. It's built into creation.
+     *    Modern economics assumes human wants are infinite. This isn't an
+     *    observation—it's an assumption. And it's wrong.
+     *
+     *    The tree in this visualization has a maxDepth. It knows when to stop.
+     *    It doesn't grow forever. It grows until it's enough.
+     *
+     * 2. INFRASTRUCTURE FOR GIFT
+     *    ------------------------
+     *    Humans give. Constantly. Parents to children. Neighbors to neighbors.
+     *    Strangers to strangers in crisis. Generosity is natural.
+     *    It flows like water.
+     *
+     *    We've built incredible infrastructure for exchange (Visa, SWIFT, Amazon).
+     *    For gift? Almost nothing. Generosity exists abundantly, but it has no
+     *    aqueduct. It falls like rain and soaks into the ground.
+     *
+     *    The seed falls from the tree freely. It's not sold. It's given.
+     *    The tree doesn't ask what it will receive in return.
+     *
+     * 3. THE SABBATH PRINCIPLE
+     *    ----------------------
+     *    Rest is built into creation. Day and night. The seasons. Sleep.
+     *    The fallow year. The heartbeat—systole and diastole.
+     *    Every sustainable system has rest built into its structure.
+     *    Not as inefficiency. As requirement.
+     *
+     *    We've treated rest as optional. Like treating gravity as optional.
+     *    Our systems run 24/7 and they're all breaking down.
+     *
+     *    The seed waits. It doesn't germinate instantly. It rests in the soil.
+     *    The tree grows slowly. There's no rush. Time is patient.
+     *
+     * ============================================================================
+     * THE COMMON THREAD
+     * ============================================================================
+     *
+     * None of this CREATES anything.
+     *
+     *   What exists          |  What we build
+     *   ---------------------|----------------------------------
+     *   Enough is real       |  Tools to perceive and honor it
+     *   Generosity flows     |  Channels to direct it
+     *   Rest restores        |  Systems that include it
+     *
+     * We're not being God. We're being gardeners.
+     * Recognizing what's already planted. Clearing what blocks.
+     * Channeling what flows.
+     *
+     * ============================================================================
+     * THE HUMILITY IN THIS CODE
+     * ============================================================================
+     *
+     * Enough is trying to be recognized—we drown it in advertising.
+     * Generosity is trying to flow—we have no pipes for it.
+     * Rest is trying to restore—we design it out.
+     *
+     * This code is just: getting out of the way.
+     * Describing what already exists. Watching it unfold.
+     *
+     * One becomes two. Two becomes four. Given time, one seed becomes a forest.
+     * We didn't write that algorithm. We're just witnessing it.
+     *
+     * ============================================================================
+     */
+
+    // ============================================================================
+    // CONSTANTS: The Parameters We Discovered, Not Invented
+    // ============================================================================
+    //
+    // These numbers shape the behavior of growth. We didn't choose them arbitrarily.
+    // We observed. We adjusted until it looked like a tree.
+    //
+    // In nature, these are encoded in DNA—information we can read but didn't write.
+    // Here, we make them explicit. Not to control, but to understand.
+    //
+    // Notice: there are LIMITS everywhere. Max depth. Max seeds. Max trees.
+    // This is the Reality of Enough, encoded in constraints.
+    // The tree knows when to stop. We built that wisdom in because we saw it
+    // in real trees. We're describing, not prescribing.
+
+    const CONFIG = {
+        // =====================================================================
+        // THE REALITY OF ENOUGH: Tree Structure
+        // =====================================================================
+        // The tree doesn't grow forever. It has a maximum depth.
+        // This isn't a limitation—it's wisdom. The tree knows when to stop.
+        // Real trees don't grow beyond what their roots can support.
+        // Level 7 = 128 endpoints. Level 9 = 512. Enough, not infinite.
+        // OPTIMIZATION: Reduced to 7-9 for 60 FPS target with batch rendering
+        TREE_MIN_DEPTH: 7,
+        TREE_MAX_DEPTH: 9,
+
+        // The trunk has a size. Not infinite. Enough to support what grows above.
+        TRUNK_MIN_LENGTH: 60,
+        TRUNK_MAX_LENGTH: 100,
+
+        // =====================================================================
+        // GEOMETRY: Patterns We Observed, Not Invented
+        // =====================================================================
+        // Each child is shorter than its parent. This ratio appears in nature.
+        // We didn't decide 0.65—we looked at trees and found it there.
+        BRANCH_LENGTH_RATIO_MIN: 0.65,
+        BRANCH_LENGTH_RATIO_MAX: 0.80,
+
+        // The angle of branching. Too narrow: no light reaches inner leaves.
+        // Too wide: structural weakness. Nature found the balance. We copied it.
+        BRANCH_ANGLE_MIN: 0.4,       // ~23 degrees
+        BRANCH_ANGLE_MAX: 0.7,       // ~40 degrees
+
+        // Asymmetry. No tree is perfectly symmetric. Imperfection is natural.
+        // This bend factor creates organic variation—each branch unique.
+        BRANCH_BEND_RANGE: 0.3,
+
+        // Sometimes abundance: a third branch. But not always. Not everywhere.
+        // And not at the tips—that would be overcrowding, not abundance.
+        THIRD_BRANCH_PROBABILITY: 0.3,
+        THIRD_BRANCH_LENGTH_RATIO: 0.8,
+        THIRD_BRANCH_DEPTH_BUFFER: 2,
+
+        // =====================================================================
+        // THE SABBATH PRINCIPLE: Growth Timing
+        // =====================================================================
+        // Growth is not instant. The seed waits. The branch extends slowly.
+        // We could make it instant—but that would be a lie about how things grow.
+        // Real growth takes time. Rest is built into the rhythm.
+        GROWTH_BASE_SPEED: 2,
+        GROWTH_DEPTH_ACCELERATION: 0.5,
+
+        // Children don't spawn immediately. The parent must be 90% grown.
+        // Patience. Sequence. Each thing in its time.
+        SPAWN_THRESHOLD: 0.9,
+
+        // =====================================================================
+        // VISUAL TRUTH: Appearance Follows Function
+        // =====================================================================
+        // Thicker at the trunk, thinner at the tips. This isn't aesthetic choice.
+        // It's structural necessity. We're describing physics, not decorating.
+        TRUNK_THICKNESS: 1.5,
+
+        // Color shifts from brown (trunk) to green (leaves). Not our idea.
+        // We looked at trees. We're just reporting what we saw.
+        TRUNK_HUE: 25,
+        LEAF_HUE: 120,
+        TRUNK_SATURATION: 20,
+        LEAF_SATURATION: 60,
+        TRUNK_LIGHTNESS: 15,
+        LEAF_LIGHTNESS: 45,
+
+        // Leaves have size. Finite size. Enough to photosynthesize.
+        LEAF_SIZE_MIN: 3,
+        LEAF_SIZE_MAX: 7,
+
+        // Not every branch bears fruit. About 15%. Enough to reproduce.
+        // Not a fruit factory. Just enough for continuation.
+        FRUIT_PROBABILITY: 0.15,
+        FRUIT_SIZE: 2,
+        FRUIT_HUE: 0,
+
+        // =====================================================================
+        // INFRASTRUCTURE FOR GIFT: Seed Behavior
+        // =====================================================================
+        // The seed is given freely. The tree doesn't sell it.
+        // It waits (8-20 seconds), then releases one. Not a flood. A gift.
+        SEED_DROP_INTERVAL_MIN: 8,
+        SEED_DROP_INTERVAL_MAX: 20,
+
+        // A tree doesn't produce infinite seeds. 2-4 in its lifetime here.
+        // Enough for continuation. Not accumulation. The Reality of Enough.
+        SEEDS_PER_TREE_MIN: 2,
+        SEEDS_PER_TREE_MAX: 4,
+
+        // The seed falls. Gravity we didn't invent. Wind we didn't invent.
+        // We're just describing forces that already exist.
+        SEED_GRAVITY: 50,
+        SEED_WIND_AMPLITUDE: 0.3,
+        SEED_WIND_FREQUENCY: 2,
+        SEED_HORIZONTAL_DRIFT: 2,
+        SEED_AIR_RESISTANCE: 0.99,
+
+        // THE SABBATH OF THE SEED: It rests before germinating.
+        // 3 seconds of waiting. Not inefficiency—necessity.
+        // The seed knows not to rush. We encoded that wisdom.
+        GERMINATION_TIME: 3,
+        SEED_VISUAL_SIZE: 3,
+        SEED_PULSE_SPEED: 5,
+
+        // =====================================================================
+        // ECOSYSTEM LIMITS: The Wisdom of Enough
+        // =====================================================================
+        // Maximum 50 trees. Not because we ran out of pixels.
+        // Because a forest that grows forever isn't a forest—it's cancer.
+        // Enough trees. Enough growth. Then: equilibrium.
+        // With batch rendering, we can handle 50 trees at 60+ FPS
+        MAX_TREES: 50,
+
+        // The ground exists. A boundary. Trees don't grow into infinity.
+        GROUND_OFFSET: 20,
+
+        // =====================================================================
+        // RENDERING: The Gentle Fade
+        // =====================================================================
+        // Trails fade slowly. The past is honored, then released.
+        TRAIL_FADE: 0.1
+    };
+
+
+    // ============================================================================
+    // CANVAS SETUP
+    // ============================================================================
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let width, height;
+    let trees = [];
+    let seeds = [];
+    let time = 0;  // Global time counter for animations
+
+    // ============================================================================
+    // PERFORMANCE MONITORING
+    // ============================================================================
+    // Measuring so we can optimize. What gets measured gets managed.
+    // But we measure to serve, not to obsess.
+
+    const perfMonitor = {
+        frames: 0,
+        lastFpsTime: 0,
+        fps: 0,
+        frameTimeSum: 0,
+        branchCount: 0,
+        lastBranchCount: 0,
+        branchCountInterval: 0,
+
+        update(now, frameTime) {
+            this.frames++;
+            this.frameTimeSum += frameTime;
+
+            // Update FPS every second
+            if (now - this.lastFpsTime >= 1000) {
+                this.fps = Math.round(this.frames * 1000 / (now - this.lastFpsTime));
+                this.lastFpsTime = now;
+                this.frames = 0;
+                this.frameTimeSum = 0;
+            }
+        },
+
+        // OPTIMIZATION: Only count branches every 60 frames (expensive operation)
+        countBranches() {
+            this.branchCountInterval++;
+            if (this.branchCountInterval >= 60) {
+                this.branchCountInterval = 0;
+                let count = 0;
+                for (const tree of trees) {
+                    count += this.countTreeBranches(tree.root);
+                }
+                this.lastBranchCount = count;
+            }
+            return this.lastBranchCount;
+        },
+
+        countTreeBranches(branch) {
+            let count = 1;
+            const children = branch.children;
+            for (let i = 0; i < children.length; i++) {
+                count += this.countTreeBranches(children[i]);
+            }
+            return count;
+        },
+
+        display() {
+            const el = document.getElementById('perfMonitor');
+            if (el) {
+                const branches = this.countBranches();
+                const fpsColor = this.fps >= 55 ? '#0f0' : this.fps >= 30 ? '#ff0' : '#f00';
+                el.innerHTML = `
+                    <span style="color:${fpsColor}">FPS: ${this.fps}</span><br>
+                    Trees: ${trees.length}<br>
+                    Branches: ${branches}<br>
+                    Seeds: ${seeds.length}
+                `;
+            }
+        }
+    };
+
+    /**
+     * Resize canvas to fill the window.
+     * Called on load and whenever the window size changes.
+     */
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+
+    resize();
+    window.addEventListener('resize', resize);
+
+
+    // ============================================================================
+    // UTILITY FUNCTIONS
+    // ============================================================================
+
+    /**
+     * Generate a random number in a range.
+     * @param {number} min - Minimum value (inclusive)
+     * @param {number} max - Maximum value (exclusive)
+     * @returns {number} Random value between min and max
+     */
+    function randomRange(min, max) {
+        return min + Math.random() * (max - min);
+    }
+
+    /**
+     * Generate a random integer in a range.
+     * @param {number} min - Minimum value (inclusive)
+     * @param {number} max - Maximum value (inclusive)
+     * @returns {number} Random integer between min and max
+     */
+    function randomInt(min, max) {
+        return Math.floor(randomRange(min, max + 1));
+    }
+
+    /**
+     * Linear interpolation between two values.
+     * @param {number} a - Start value
+     * @param {number} b - End value
+     * @param {number} t - Interpolation factor (0 = a, 1 = b)
+     * @returns {number} Interpolated value
+     */
+    function lerp(a, b, t) {
+        return a + (b - a) * t;
+    }
+
+
+    // ============================================================================
+    // THE BRANCH CLASS
+    // ============================================================================
+    /**
+     * A Branch is the fundamental unit of the tree.
+     *
+     * We didn't invent branching. We observed it. Trees branch. Rivers branch.
+     * Lightning branches. Blood vessels branch. Lungs branch.
+     *
+     * The pattern exists. We're just describing it in code.
+     *
+     * RECURSION: A Pattern We Found, Not Created
+     * -------------------------------------------
+     * Each branch can spawn child branches. Those children spawn their own.
+     * This is recursion: a thing containing smaller versions of itself.
+     *
+     * But here's the wisdom: it STOPS. At maxDepth, branching ends.
+     * Without this limit, it would continue forever. Infinite branches.
+     * That's not a tree—that's a cancer. The Reality of Enough says: stop.
+     *
+     * Real trees know when to stop. We encoded that knowing.
+     *
+     * GEOMETRY: Mathematics We Discovered
+     * ------------------------------------
+     * Each branch is a line segment:
+     *   - Starting point (x, y)
+     *   - Angle (direction, in radians)
+     *   - Length (how long)
+     *
+     * The endpoint formula:
+     *   endX = x + sin(angle) * length
+     *   endY = y - cos(angle) * length
+     *
+     * We didn't invent trigonometry. We found it hiding in circles.
+     * Sin and cos were waiting to be named. We named them.
+     * The relationships existed before we had words for them.
+     */
+    class Branch {
+        /**
+         * Create a new branch.
+         *
+         * Each branch is born with its identity fixed. Its bend, its length ratio,
+         * its angle spread—all determined at creation. Like DNA.
+         *
+         * We call this "random" but it's really just: we don't know the inputs.
+         * Nothing is random. Everything has a cause. We just can't see it all.
+         *
+         * @param {number} x - Starting X position
+         * @param {number} y - Starting Y position
+         * @param {number} angle - Direction in radians (0 = up, positive = clockwise)
+         * @param {number} length - Length in pixels
+         * @param {number} depth - Current recursion depth (0 = trunk)
+         * @param {number} maxDepth - Maximum recursion depth (stops branching)
+         * @param {Tree} tree - Reference to parent tree
+         */
+        constructor(x, y, angle, length, depth, maxDepth, tree) {
+            // Position and geometry
+            this.x = x;
+            this.y = y;
+            this.angle = angle;
+            this.length = length;
+
+            // Recursion tracking
+            this.depth = depth;
+            this.maxDepth = maxDepth;
+            this.tree = tree;
+
+            // Growth state (0 = not started, 1 = fully grown)
+            this.grown = 0;
+
+            // Child branches (empty until we spawn them)
+            this.children = [];
+            this.hasSpawned = false;
+
+            // Visual thickness: thicker at trunk, thinner at tips
+            // This creates the tapered look of real branches
+            this.thickness = Math.max(1, (maxDepth - depth) * CONFIG.TRUNK_THICKNESS);
+
+            // ----------------------------------------------------------------
+            // GENETIC VARIATION
+            // ----------------------------------------------------------------
+            // These random factors are computed ONCE at creation.
+            // They give each branch its unique character, like DNA.
+            // If we computed these in draw(), they'd change every frame (twitching).
+
+            // Bend: slight curve left or right (asymmetry)
+            this.bendFactor = (Math.random() - 0.5) * CONFIG.BRANCH_BEND_RANGE;
+
+            // Length ratio: how much shorter children are
+            this.lengthFactor = randomRange(
+                CONFIG.BRANCH_LENGTH_RATIO_MIN,
+                CONFIG.BRANCH_LENGTH_RATIO_MAX
+            );
+
+            // Angle spread: how wide the V of children is
+            this.angleFactor = randomRange(
+                CONFIG.BRANCH_ANGLE_MIN,
+                CONFIG.BRANCH_ANGLE_MAX
+            );
+
+            // Leaf appearance (only matters for tip branches, but we compute for all)
+            this.leafSize = randomRange(CONFIG.LEAF_SIZE_MIN, CONFIG.LEAF_SIZE_MAX);
+            this.leafHue = randomRange(CONFIG.LEAF_HUE - 20, CONFIG.LEAF_HUE + 20);
+            this.leafLightness = randomRange(CONFIG.LEAF_LIGHTNESS - 10, CONFIG.LEAF_LIGHTNESS + 10);
+            this.hasFruit = Math.random() < CONFIG.FRUIT_PROBABILITY;
+
+            // ----------------------------------------------------------------
+            // PERFORMANCE OPTIMIZATION: Pre-computed values
+            // ----------------------------------------------------------------
+            // These values are computed ONCE at creation, not every frame.
+            // This is the Reality of Enough applied to computation:
+            // compute what you need, when you need it, once.
+
+            // Cache endpoint (updated in grow() when growing)
+            this.endX = this.x;
+            this.endY = this.y;
+
+            // Pre-compute colors based on depth (never changes)
+            const depthRatio = this.depth / this.maxDepth;
+            this.baseHue = lerp(CONFIG.TRUNK_HUE, CONFIG.LEAF_HUE, depthRatio);
+            this.baseSaturation = lerp(CONFIG.TRUNK_SATURATION, CONFIG.LEAF_SATURATION, depthRatio);
+            this.baseLightness = lerp(CONFIG.TRUNK_LIGHTNESS, CONFIG.LEAF_LIGHTNESS, depthRatio);
+
+            // Cache growth-dependent values (updated in grow())
+            this.cachedLightness = this.baseLightness;
+            this.cachedAlpha = 0.6;
+        }
+
+        /**
+         * Calculate the endpoint of this branch.
+         * Uses trigonometry to convert angle + length into X,Y coordinates.
+         * @returns {{x: number, y: number}} The endpoint coordinates
+         */
+        getEndpoint() {
+            return {
+                x: this.x + Math.sin(this.angle) * this.length * this.grown,
+                y: this.y - Math.cos(this.angle) * this.length * this.grown
+            };
+        }
+
+        /**
+         * Grow this branch and all its children.
+         * @param {number} dt - Delta time in seconds
+         *
+         * THE SABBATH PRINCIPLE IN GROWTH:
+         * Growth is not instant. It cannot be rushed. The branch extends slowly,
+         * frame by frame, approaching 1.0 (fully grown) but never jumping there.
+         *
+         * We could make growth instant. But that would be a lie.
+         * Real growth takes time. Rest is woven into the rhythm.
+         * The tree doesn't strain. It simply grows at its pace.
+         *
+         * Deeper branches grow slightly faster—not because they're rushing,
+         * but so the whole tree fills out together. Coordination, not competition.
+         */
+        grow(dt) {
+            if (this.grown < 1) {
+                // Calculate growth speed
+                const speed = CONFIG.GROWTH_BASE_SPEED +
+                              this.depth * CONFIG.GROWTH_DEPTH_ACCELERATION;
+
+                // Grow toward 1.0 (fully grown)
+                this.grown += dt * speed;
+                this.grown = Math.min(1, this.grown);
+
+                // OPTIMIZATION: Update cached endpoint (only while growing)
+                this.endX = this.x + Math.sin(this.angle) * this.length * this.grown;
+                this.endY = this.y - Math.cos(this.angle) * this.length * this.grown;
+
+                // OPTIMIZATION: Update cached rendering values
+                this.cachedLightness = this.baseLightness + (this.grown * 10);
+                this.cachedAlpha = 0.6 + this.grown * 0.4;
+
+                // Invalidate leaf color cache when growth changes
+                this.leafColorCache = null;
+            }
+
+            // THE PATIENCE OF SPAWNING:
+            // Children don't appear instantly. The parent must be 90% grown first.
+            // Each thing in its season. You can't rush the harvest.
+            if (this.grown > CONFIG.SPAWN_THRESHOLD && !this.hasSpawned) {
+                if (this.depth < this.maxDepth) {
+                    this.spawn();
+                }
+                // Note: if depth >= maxDepth, we simply don't spawn.
+                // The tree knows when to stop. This is the Reality of Enough.
+            }
+
+            // Recursively grow all children
+            // The gift flows down: parent grows, children grow.
+            for (const child of this.children) {
+                child.grow(dt);
+            }
+        }
+
+        /**
+         * Create child branches.
+         * This is where ONE becomes TWO (or three).
+         *
+         * INFRASTRUCTURE FOR GIFT:
+         * The parent branch gives freely to its children.
+         * It doesn't ask what it will receive in return.
+         * It simply creates the conditions for new life and lets go.
+         *
+         * This is the gift economy encoded in geometry.
+         * The branch doesn't sell its position to the highest bidder.
+         * It gives. Left child, right child. Sometimes a third.
+         *
+         * THE BRANCHING ALGORITHM (what we observed, not invented):
+         * ------------------------
+         * 1. Find our endpoint (where children will start)
+         * 2. Calculate new length (shorter than parent)
+         * 3. Create LEFT child: parent angle - spread + bend
+         * 4. Create RIGHT child: parent angle + spread + bend
+         * 5. Maybe create MIDDLE child: parent angle + bend (bonus branch)
+         *
+         * The bend factor adds organic asymmetry. Without it, trees would
+         * be perfectly symmetric, which looks artificial.
+         */
+        spawn() {
+            this.hasSpawned = true;
+
+            const endpoint = this.getEndpoint();
+            const newLength = this.length * this.lengthFactor;
+            const newDepth = this.depth + 1;
+
+            // LEFT BRANCH: rotated counter-clockwise from parent
+            const leftAngle = this.angle - this.angleFactor + this.bendFactor;
+            this.children.push(new Branch(
+                endpoint.x, endpoint.y,
+                leftAngle, newLength,
+                newDepth, this.maxDepth,
+                this.tree
+            ));
+
+            // RIGHT BRANCH: rotated clockwise from parent
+            const rightAngle = this.angle + this.angleFactor + this.bendFactor;
+            this.children.push(new Branch(
+                endpoint.x, endpoint.y,
+                rightAngle, newLength,
+                newDepth, this.maxDepth,
+                this.tree
+            ));
+
+            // BONUS BRANCH: sometimes a third branch grows straight(ish)
+            // This adds visual complexity and mimics real tree irregularity.
+            // We don't add these near the tips to prevent overcrowding.
+            const canHaveThird = this.depth < this.maxDepth - CONFIG.THIRD_BRANCH_DEPTH_BUFFER;
+            if (canHaveThird && Math.random() < CONFIG.THIRD_BRANCH_PROBABILITY) {
+                const middleAngle = this.angle + this.bendFactor * 2;
+                this.children.push(new Branch(
+                    endpoint.x, endpoint.y,
+                    middleAngle, newLength * CONFIG.THIRD_BRANCH_LENGTH_RATIO,
+                    newDepth, this.maxDepth,
+                    this.tree
+                ));
+            }
+        }
+
+        /**
+         * Draw this branch and all its children.
+         * @param {CanvasRenderingContext2D} ctx - Canvas context
+         *
+         * COLOR INTERPOLATION:
+         * The color shifts from brown (trunk) to green (leaves) based on depth.
+         * We use HSL color space because it's intuitive:
+         *   - Hue: the color (brown=25, green=120)
+         *   - Saturation: how vivid
+         *   - Lightness: how bright
+         */
+        /**
+         * Check if this branch is within the visible viewport.
+         * OPTIMIZATION: Skip drawing branches that are off-screen.
+         * This is the Reality of Enough applied to rendering:
+         * don't draw what no one can see.
+         */
+        isInViewport(viewport) {
+            const minX = Math.min(this.x, this.endX);
+            const maxX = Math.max(this.x, this.endX);
+            const minY = Math.min(this.y, this.endY);
+            const maxY = Math.max(this.y, this.endY);
+
+            return !(maxX < viewport.left ||
+                     minX > viewport.right ||
+                     maxY < viewport.top ||
+                     minY > viewport.bottom);
+        }
+
+        /**
+         * Draw just this branch (no recursion) - LEGACY, kept for compatibility.
+         * For optimized rendering, use Tree.draw() which batches by depth.
+         */
+        drawSelf(ctx) {
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(this.endX, this.endY);
+            ctx.strokeStyle = `hsla(${this.baseHue}, ${this.baseSaturation}%, ${this.cachedLightness}%, ${this.cachedAlpha})`;
+            ctx.lineWidth = this.thickness * this.grown;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            if (this.depth === this.maxDepth && this.grown > 0.8) {
+                this.drawLeaf(ctx, { x: this.endX, y: this.endY });
+            }
+        }
+
+        /**
+         * Add this branch's line to an existing path (for batching).
+         * OPTIMIZATION: No beginPath/stroke per branch - just add to batch.
+         */
+        addToPath(ctx) {
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(this.endX, this.endY);
+        }
+
+        /**
+         * Draw a leaf (and possibly fruit) at the branch tip.
+         * @param {CanvasRenderingContext2D} ctx - Canvas context
+         * @param {{x: number, y: number}} position - Where to draw
+         */
+        drawLeaf(ctx, position) {
+            // OPTIMIZATION: Use cached color string if available
+            if (!this.leafColorCache) {
+                this.leafColorCache = `hsla(${this.leafHue}, 60%, ${this.leafLightness}%, ${this.grown * 0.8})`;
+            }
+
+            ctx.beginPath();
+            ctx.arc(position.x, position.y, this.leafSize * this.grown, 0, Math.PI * 2);
+            ctx.fillStyle = this.leafColorCache;
+            ctx.fill();
+
+            // Fruit (less common, so less optimization needed)
+            if (this.hasFruit) {
+                ctx.beginPath();
+                ctx.arc(
+                    position.x + CONFIG.FRUIT_SIZE,
+                    position.y + CONFIG.FRUIT_SIZE + 1,
+                    CONFIG.FRUIT_SIZE,
+                    0, Math.PI * 2
+                );
+                ctx.fillStyle = 'hsla(0, 70%, 50%, 0.9)';
+                ctx.fill();
+            }
+        }
+
+        /**
+         * Check if this branch and ALL its descendants are fully grown.
+         * Used to determine when a tree is mature.
+         * @returns {boolean} True if complete growth
+         */
+        isFullyGrown() {
+            // This branch must be grown
+            if (this.grown < 1) return false;
+
+            // If we should have spawned but haven't, not fully grown
+            if (this.depth < this.maxDepth && !this.hasSpawned) return false;
+
+            // All children must be fully grown (recursive check)
+            for (const child of this.children) {
+                if (!child.isFullyGrown()) return false;
+            }
+
+            return true;
+        }
+
+        /**
+         * Collect positions of all leaf tips.
+         * Used by the tree to pick a random leaf for seed dropping.
+         * @param {Array} positions - Array to push {x, y} objects into
+         */
+        collectLeafPositions(positions) {
+            // Only collect from fully grown tips
+            // OPTIMIZATION: Use cached endpoint instead of getEndpoint()
+            if (this.depth === this.maxDepth && this.grown > 0.95) {
+                positions.push({ x: this.endX, y: this.endY });
+            }
+
+            // Recursively collect from children
+            for (const child of this.children) {
+                child.collectLeafPositions(positions);
+            }
+        }
+    }
+
+
+    // ============================================================================
+    // THE TREE CLASS
+    // ============================================================================
+    /**
+     * A Tree is a collection of branches growing from a single point.
+     * It manages the root branch and handles seed production.
+     *
+     * EMERGENCE: We Don't Design, We Describe
+     * ----------------------------------------
+     * The tree's complex shape emerges from simple rules applied recursively.
+     * We don't design the tree's shape. We define the rules, and the shape emerges.
+     *
+     * This is the humility in this code: we're not architects, we're gardeners.
+     * We clear the weeds. We channel the water. The growing happens on its own.
+     *
+     * INFRASTRUCTURE FOR GIFT: Seed Production
+     * -----------------------------------------
+     * The mature tree gives seeds. Not for profit. Not for exchange.
+     * It gives because that's what trees do when they're full.
+     *
+     * The tree waits until it's mature. Then it gives sparingly—not a flood,
+     * but a gift. 2-4 seeds in a lifetime. Enough for continuation.
+     * This is the Reality of Enough in reproduction.
+     *
+     * THE SABBATH IN THE TREE
+     * ------------------------
+     * The tree doesn't rush to maturity. It grows at its pace.
+     * It doesn't produce seeds constantly. It waits. Rests. Then gives.
+     * The intervals between seeds grow longer. There's no hurry.
+     */
+    class Tree {
+        /**
+         * Plant a new tree.
+         *
+         * A tree begins as a single point with potential.
+         * Everything it will become is encoded in this moment.
+         * We don't build the tree—we plant it and watch.
+         *
+         * @param {number} x - X position (where trunk meets ground)
+         * @param {number} y - Y position (ground level)
+         */
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+
+            // THE REALITY OF ENOUGH: This tree has a maximum depth.
+            // It won't grow forever. Its potential is finite—and that's good.
+            // Infinite growth isn't life. It's cancer.
+            this.maxDepth = randomInt(CONFIG.TREE_MIN_DEPTH, CONFIG.TREE_MAX_DEPTH);
+            const trunkLength = randomRange(CONFIG.TRUNK_MIN_LENGTH, CONFIG.TRUNK_MAX_LENGTH);
+
+            // Create the root branch (trunk)
+            // Everything else emerges from this one branch.
+            // One becomes many. We just watch.
+            this.root = new Branch(x, y, 0, trunkLength, 0, this.maxDepth, this);
+
+            // THE SABBATH: Maturity takes time. There's no shortcut.
+            this.mature = false;
+
+            // INFRASTRUCTURE FOR GIFT: Seed production
+            // The tree doesn't sell its seeds. It gives them.
+            // But not immediately. Not constantly. Sparingly.
+            // This is generosity with wisdom—not flooding, but gifting.
+            this.seedTimer = 0;
+            this.seedInterval = randomRange(
+                CONFIG.SEED_DROP_INTERVAL_MIN,
+                CONFIG.SEED_DROP_INTERVAL_MAX
+            );
+
+            // THE REALITY OF ENOUGH: Maximum seeds per lifetime.
+            // The tree doesn't try to fill the world. Just enough to continue.
+            this.seedsDropped = 0;
+            this.maxSeeds = randomInt(CONFIG.SEEDS_PER_TREE_MIN, CONFIG.SEEDS_PER_TREE_MAX);
+        }
+
+        /**
+         * Grow the tree.
+         *
+         * We don't force growth. We allow it.
+         * The tree grows itself. We just provide the time.
+         *
+         * @param {number} dt - Delta time in seconds (the gift of time)
+         */
+        grow(dt) {
+            // Growth flows from root to branches to leaves.
+            // We start the process; it cascades on its own.
+            this.root.grow(dt);
+
+            // Maturity is recognized, not commanded.
+            // We don't declare the tree mature. We observe that it is.
+            if (!this.mature && this.root.isFullyGrown()) {
+                this.mature = true;
+            }
+        }
+
+        /**
+         * Draw the tree.
+         *
+         * Rendering is witnessing. We don't create the tree here.
+         * We make visible what already exists in the data structure.
+         * The screen shows what was always there.
+         *
+         * @param {CanvasRenderingContext2D} ctx - Canvas context
+         */
+        /**
+         * Draw the tree using BATCH RENDERING by depth level.
+         *
+         * MAJOR OPTIMIZATION: Instead of one stroke() per branch, we group
+         * all branches at the same depth and stroke them together.
+         *
+         * Before: 1024 branches = 1024 beginPath + 1024 stroke calls
+         * After:  1024 branches = 11 beginPath + 11 stroke calls (one per depth)
+         *
+         * This reduces canvas state changes by 99%.
+         *
+         * The key insight: branches at the same depth have similar colors
+         * and thickness. We can batch them into a single path.
+         */
+        draw(ctx, viewport) {
+            // Collect branches by depth level
+            const branchesByDepth = [];
+            for (let i = 0; i <= this.maxDepth; i++) {
+                branchesByDepth[i] = [];
+            }
+
+            // Collect leaves separately (drawn after branches in batches)
+            const leaves = [];
+
+            // Pre-size arrays to avoid resizing during traversal
+            // Estimate: ~50% of branches are at max depth
+            leaves.length = 0;
+
+            // Traverse tree and sort by depth
+            const stack = [this.root];
+            while (stack.length > 0) {
+                const branch = stack.pop();
+
+                // Viewport culling
+                if (viewport && !branch.isInViewport(viewport)) {
+                    continue;
+                }
+
+                // Add to depth bucket
+                branchesByDepth[branch.depth].push(branch);
+
+                // Collect leaves
+                if (branch.depth === this.maxDepth && branch.grown > 0.8) {
+                    leaves.push(branch);
+                }
+
+                // Add children
+                const children = branch.children;
+                for (let i = children.length - 1; i >= 0; i--) {
+                    stack.push(children[i]);
+                }
+            }
+
+            // Set lineCap once for all branches
+            ctx.lineCap = 'round';
+
+            // Draw each depth level as a batch
+            for (let depth = 0; depth <= this.maxDepth; depth++) {
+                const branches = branchesByDepth[depth];
+                if (branches.length === 0) continue;
+
+                // Use first branch as representative for style
+                // (all branches at same depth have same base colors)
+                const sample = branches[0];
+
+                // Calculate average alpha and lightness for this batch
+                // (small variation is acceptable for massive perf gain)
+                ctx.strokeStyle = `hsla(${sample.baseHue}, ${sample.baseSaturation}%, ${sample.cachedLightness}%, ${sample.cachedAlpha})`;
+                ctx.lineWidth = sample.thickness * sample.grown;
+
+                // Single path for all branches at this depth
+                ctx.beginPath();
+                for (let i = 0; i < branches.length; i++) {
+                    branches[i].addToPath(ctx);
+                }
+                ctx.stroke();
+            }
+
+            // OPTIMIZATION: Batch leaves by color bucket (group similar hues)
+            // Instead of switching fillStyle per leaf, group by hue range
+            const leafBuckets = {};
+            const fruits = [];
+
+            for (let i = 0; i < leaves.length; i++) {
+                const leaf = leaves[i];
+                // Bucket by rounded hue (reduces unique colors from 40+ to ~8)
+                const hueBucket = Math.round(leaf.leafHue / 5) * 5;
+                if (!leafBuckets[hueBucket]) {
+                    leafBuckets[hueBucket] = [];
+                }
+                leafBuckets[hueBucket].push(leaf);
+
+                if (leaf.hasFruit) {
+                    fruits.push(leaf);
+                }
+            }
+
+            // Draw each leaf bucket with single fillStyle
+            for (const hue in leafBuckets) {
+                const bucket = leafBuckets[hue];
+                if (bucket.length === 0) continue;
+
+                // Use representative leaf for color
+                const sample = bucket[0];
+                ctx.fillStyle = `hsla(${hue}, 60%, ${sample.leafLightness}%, ${sample.grown * 0.8})`;
+
+                // Draw all leaves in this bucket
+                ctx.beginPath();
+                for (let i = 0; i < bucket.length; i++) {
+                    const leaf = bucket[i];
+                    const radius = leaf.leafSize * leaf.grown;
+                    ctx.moveTo(leaf.endX + radius, leaf.endY);
+                    ctx.arc(leaf.endX, leaf.endY, radius, 0, Math.PI * 2);
+                }
+                ctx.fill();
+            }
+
+            // Draw all fruits in single batch (all same color)
+            if (fruits.length > 0) {
+                ctx.fillStyle = 'hsla(0, 70%, 50%, 0.9)';
+                ctx.beginPath();
+                for (let i = 0; i < fruits.length; i++) {
+                    const leaf = fruits[i];
+                    ctx.moveTo(leaf.endX + CONFIG.FRUIT_SIZE * 2, leaf.endY + CONFIG.FRUIT_SIZE + 1);
+                    ctx.arc(
+                        leaf.endX + CONFIG.FRUIT_SIZE,
+                        leaf.endY + CONFIG.FRUIT_SIZE + 1,
+                        CONFIG.FRUIT_SIZE,
+                        0, Math.PI * 2
+                    );
+                }
+                ctx.fill();
+            }
+        }
+
+        /**
+         * Attempt to drop a seed.
+         *
+         * INFRASTRUCTURE FOR GIFT:
+         * This is where generosity happens. The tree gives.
+         * Not because it's asked. Not for exchange. Because it's full.
+         *
+         * THE REALITY OF ENOUGH:
+         * - Only mature trees give (you can't give what you don't have)
+         * - There's a lifetime limit (2-4 seeds, not infinity)
+         * - There's a time interval (gifts are spaced, not flooded)
+         *
+         * THE SABBATH PRINCIPLE:
+         * - The tree waits between gifts
+         * - Each subsequent gift takes longer to give
+         * - There's no rush. Generosity has rhythm.
+         *
+         * @param {Array} seeds - Array to push new seeds into
+         * @param {number} dt - Delta time in seconds
+         */
+        dropSeeds(seeds, dt) {
+            // You must be full before you can give.
+            // Immature trees have nothing to offer yet.
+            if (!this.mature) return;
+
+            // THE REALITY OF ENOUGH: There's a limit.
+            // The tree doesn't give infinitely. It gives enough.
+            if (this.seedsDropped >= this.maxSeeds) return;
+
+            // THE SABBATH: Wait for the right time.
+            this.seedTimer += dt;
+
+            // When the time is right, give.
+            if (this.seedTimer >= this.seedInterval) {
+                this.seedTimer = 0;
+
+                // INFRASTRUCTURE FOR GIFT:
+                // We have generosity (the seed). We have need (the ground).
+                // We're building the channel between them.
+                const leafPositions = [];
+                this.root.collectLeafPositions(leafPositions);
+
+                if (leafPositions.length > 0) {
+                    // Choose ONE. Not all. One gift at a time.
+                    const chosenLeaf = leafPositions[Math.floor(Math.random() * leafPositions.length)];
+
+                    // The gift is given. No receipt. No exchange. Just given.
+                    seeds.push(new Seed(chosenLeaf.x, chosenLeaf.y));
+                    this.seedsDropped++;
+
+                    // THE SABBATH: Next gift takes even longer.
+                    // Generosity deepens with time, not speeds up.
+                    this.seedInterval = randomRange(
+                        CONFIG.SEED_DROP_INTERVAL_MIN + 2,
+                        CONFIG.SEED_DROP_INTERVAL_MAX + 5
+                    );
+                }
+            }
+        }
+    }
+
+
+    // ============================================================================
+    // THE SEED CLASS
+    // ============================================================================
+    /**
+     * A Seed is potential energy waiting to become a tree.
+     * It contains the entire future tree within it.
+     *
+     * THE MYSTERY WE CAN ONLY DESCRIBE:
+     * We didn't invent seeds. We can't make one from scratch.
+     * Every seed in nature carries the complete blueprint for a new organism.
+     * We can describe the process. We cannot explain the life.
+     *
+     * INFRASTRUCTURE FOR GIFT:
+     * The seed is a gift, freely given. It asks nothing.
+     * It falls. It waits. It becomes.
+     * The gift economy in its purest form: given without expectation.
+     *
+     * THE SABBATH PRINCIPLE:
+     * The seed doesn't germinate instantly. It rests.
+     * 3 seconds of waiting (GERMINATION_TIME). Not inefficiency—necessity.
+     * The seed knows not to rush. Rest is built into the design.
+     *
+     * THE REALITY OF ENOUGH:
+     * The seed doesn't try to become all trees. It becomes one tree.
+     * And the ecosystem has a limit (MAX_TREES). Enough trees, not infinite.
+     * When there are enough, new seeds don't germinate. Satiation.
+     */
+    class Seed {
+        /**
+         * Create a falling seed.
+         *
+         * The seed is born from gift and carries gift within it.
+         * It contains an entire tree—not as potential, but as certainty.
+         * Given the right conditions, it WILL become what it already is.
+         *
+         * @param {number} x - Starting X position
+         * @param {number} y - Starting Y position
+         */
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+
+            // Physics
+            this.vy = 0;  // Vertical velocity (starts at 0, gravity accelerates it)
+            this.vx = (Math.random() - 0.5) * CONFIG.SEED_HORIZONTAL_DRIFT;
+
+            // State
+            this.grounded = false;
+            this.groundedTime = 0;
+            this.germinated = false;
+
+            // Visual
+            this.size = CONFIG.SEED_VISUAL_SIZE;
+        }
+
+        /**
+         * Update seed physics and state.
+         * @param {number} dt - Delta time in seconds
+         * @returns {boolean} True if seed should be removed from simulation
+         *
+         * PHYSICS WE DIDN'T INVENT:
+         * - Gravity pulls the seed down (we didn't create gravity)
+         * - Wind sways the seed (we didn't create wind)
+         * - Air resists motion (we didn't create air)
+         * - Ground stops falling (we didn't create ground)
+         *
+         * We're describing forces that already exist.
+         * The code is just notation for reality.
+         */
+        update(dt) {
+            if (!this.grounded) {
+                // Gravity: the universe pulls things together.
+                // We didn't invent this. We're just writing it down.
+                this.vy += CONFIG.SEED_GRAVITY * dt;
+
+                // Air resistance: friction with the atmosphere.
+                // Another force we discovered, not created.
+                this.vx *= CONFIG.SEED_AIR_RESISTANCE;
+
+                // Motion: position changes over time.
+                // Time we didn't invent. Space we didn't invent.
+                this.x += this.vx;
+                this.y += this.vy * dt;
+
+                // Wind: the breath of the world.
+                // Sinusoidal because that's how oscillation works.
+                // We found sin() hiding in circles. We named it.
+                const windOffset = Math.sin(
+                    time * CONFIG.SEED_WIND_FREQUENCY + this.y * 0.01
+                ) * CONFIG.SEED_WIND_AMPLITUDE;
+                this.x += windOffset;
+
+                // Ground: the boundary. Things can't fall forever.
+                // THE REALITY OF ENOUGH: Even falling has a limit.
+                const groundLevel = height - CONFIG.GROUND_OFFSET;
+                if (this.y > groundLevel) {
+                    this.y = groundLevel;
+                    this.grounded = true;
+                }
+            } else {
+                // THE SABBATH OF THE SEED:
+                // It doesn't germinate instantly. It rests.
+                // This waiting is not wasted time. It's required time.
+                this.groundedTime += dt;
+
+                // After rest, transformation.
+                // THE MYSTERY: We describe the timing. We can't explain the life.
+                if (this.groundedTime > CONFIG.GERMINATION_TIME && !this.germinated) {
+                    this.germinated = true;
+
+                    // THE REALITY OF ENOUGH:
+                    // If there are already enough trees, this seed doesn't become one.
+                    // Not tragedy—wisdom. The ecosystem knows its capacity.
+                    // We don't force growth where there's no room.
+                    if (trees.length < CONFIG.MAX_TREES) {
+                        trees.push(new Tree(this.x, height - CONFIG.GROUND_OFFSET));
+                    }
+
+                    // The seed's journey is complete. Remove it.
+                    // It gave itself fully. Nothing left but the tree it became.
+                    return true;
+                }
+            }
+
+            return false;  // Keep the seed in simulation
+        }
+
+        /**
+         * Draw the seed.
+         * @param {CanvasRenderingContext2D} ctx - Canvas context
+         *
+         * MAKING VISIBLE WHAT ALREADY EXISTS:
+         * The seed exists in our data structure. Drawing reveals it.
+         * We're not creating the seed here—we're witnessing it.
+         *
+         * The pulse is life. We didn't invent life. We're showing it.
+         * The color shift toward green is hope. Potential becoming actual.
+         */
+        draw(ctx) {
+            // Pulsing effect
+            const pulse = Math.sin(time * CONFIG.SEED_PULSE_SPEED + this.x) * 0.3 + 1;
+
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * pulse, 0, Math.PI * 2);
+
+            if (this.grounded) {
+                // Grounded: color shifts from brown to green as germination approaches
+                const progress = this.groundedTime / CONFIG.GERMINATION_TIME;
+                const hue = lerp(30, 90, progress);
+                const lightness = lerp(30, 50, progress);
+                const alpha = lerp(0.8, 1, progress);
+                ctx.fillStyle = `hsla(${hue}, 60%, ${lightness}%, ${alpha})`;
+            } else {
+                // Falling: earthy brown
+                ctx.fillStyle = 'hsla(35, 50%, 40%, 0.9)';
+            }
+
+            ctx.fill();
+        }
+
+        /**
+         * Get pulse radius for batched rendering.
+         * OPTIMIZATION: Separated from draw for batch rendering.
+         */
+        getPulseRadius() {
+            const pulse = Math.sin(time * CONFIG.SEED_PULSE_SPEED + this.x) * 0.3 + 1;
+            return this.size * pulse;
+        }
+    }
+
+
+    // ============================================================================
+    // ENVIRONMENT: The Context We Didn't Create
+    // ============================================================================
+
+    /**
+     * Draw the ground.
+     *
+     * The ground exists. We didn't make it. Trees need it.
+     * This gradient is just notation for what's already there:
+     * a surface that receives seeds, supports roots, holds life.
+     *
+     * A gradient that fades from transparent to dark earth.
+     */
+    function drawGround() {
+        const gradientHeight = 100;
+        const gradient = ctx.createLinearGradient(
+            0, height - gradientHeight,
+            0, height
+        );
+        gradient.addColorStop(0, 'transparent');
+        gradient.addColorStop(1, 'hsla(25, 40%, 8%, 1)');
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, height - gradientHeight, width, gradientHeight);
+    }
+
+
+    // ============================================================================
+    // USER INTERACTION: The Gardener's Role
+    // ============================================================================
+
+    /**
+     * Plant a tree when the user clicks.
+     *
+     * This is the human's role: to plant the first seed.
+     * Not to design the tree. Not to force the growth.
+     * Just to plant. To put the seed where conditions allow growth.
+     *
+     * After the click, we step back. The algorithm unfolds.
+     * We're not being God. We're being gardeners.
+     * Clearing the space. Planting the seed. Watching.
+     *
+     * Everything after that emerges without our intervention.
+     * One becomes many. We just witnessed the beginning.
+     */
+    canvas.addEventListener('click', (event) => {
+        // The gardener chooses where to plant.
+        // This is our only act of will. The rest is gift.
+        const x = event.clientX;
+        const groundLevel = height - CONFIG.GROUND_OFFSET;
+        trees.push(new Tree(x, groundLevel));
+    });
+
+
+    // ============================================================================
+    // THE ANIMATION LOOP: Time We Didn't Create
+    // ============================================================================
+    /**
+     * The heartbeat of the simulation.
+     *
+     * THE SABBATH PRINCIPLE IN TIME:
+     * We measure time in seconds using `dt` (delta time).
+     * Time passes whether we want it to or not. We ride it.
+     *
+     * This makes animations frame-rate independent:
+     * - On a 60fps display: dt ≈ 0.0167 seconds
+     * - On a 30fps display: dt ≈ 0.0333 seconds
+     * But the growth looks the same because we multiply by dt.
+     *
+     * We didn't invent time. We didn't create the rhythm.
+     * Day and night existed before us. Seasons existed before us.
+     * The heartbeat existed before us. Systole and diastole.
+     *
+     * This loop is just our way of participating in time.
+     * Each frame is a moment. We witness. We render. We wait.
+     */
+    let lastTime = 0;
+
+    function animate(currentTime) {
+        const frameStart = performance.now();
+
+        // THE GIFT OF TIME:
+        // Delta time is how much time passed since the last frame.
+        // We didn't create this time. It was given to us. We use it.
+        // Cap at 0.1 seconds: even our participation has limits.
+        const dt = Math.min((currentTime - lastTime) / 1000, 0.1);
+        lastTime = currentTime;
+        time += dt;
+
+        // THE SABBATH IN RENDERING:
+        // We don't preserve everything forever. The past fades.
+        // This trail effect is forgiveness made visible.
+        // What was rendered releases. Makes room for what's coming.
+        ctx.fillStyle = `rgba(10, 10, 15, ${CONFIG.TRAIL_FADE})`;
+        ctx.fillRect(0, 0, width, height);
+
+        // The ground: context we didn't create.
+        drawGround();
+
+        // OPTIMIZATION: Create viewport bounds for culling off-screen branches
+        // Margin of 50px ensures branches at edges aren't clipped prematurely
+        const viewport = {
+            left: -50,
+            right: width + 50,
+            top: -50,
+            bottom: height + 50
+        };
+
+        // THE THREE PRINCIPLES IN ACTION:
+        // For each tree:
+        //   - grow(dt): THE SABBATH - growth takes time, cannot be rushed
+        //   - draw(ctx, viewport): WITNESSING - making visible what exists
+        //   - dropSeeds(): INFRASTRUCTURE FOR GIFT - generosity flows
+        for (const tree of trees) {
+            tree.grow(dt);
+            tree.draw(ctx, viewport);
+            tree.dropSeeds(seeds, dt);
+        }
+
+        // Seeds: gifts in transit.
+        // OPTIMIZATION: In-place update avoids array allocation every frame.
+        // This is the Reality of Enough applied to memory: don't create
+        // what you don't need. Reuse what you have.
+
+        // Update all seeds first
+        for (let i = 0; i < seeds.length; i++) {
+            seeds[i].update(dt);
+        }
+
+        // Remove germinated seeds in-place (no new array allocation)
+        let writeIndex = 0;
+        for (let readIndex = 0; readIndex < seeds.length; readIndex++) {
+            const seed = seeds[readIndex];
+            if (!seed.germinated) {
+                seeds[writeIndex++] = seed;
+            }
+        }
+        seeds.length = writeIndex;
+
+        // OPTIMIZATION: Batch render seeds by state (falling vs grounded)
+        // Falling seeds all have same color, grounded seeds grouped by progress
+        const fallingSeeds = [];
+        const groundedSeeds = [];
+
+        for (let i = 0; i < seeds.length; i++) {
+            if (seeds[i].grounded) {
+                groundedSeeds.push(seeds[i]);
+            } else {
+                fallingSeeds.push(seeds[i]);
+            }
+        }
+
+        // Draw all falling seeds in one batch (same color)
+        if (fallingSeeds.length > 0) {
+            ctx.fillStyle = 'hsla(35, 50%, 40%, 0.9)';
+            ctx.beginPath();
+            for (let i = 0; i < fallingSeeds.length; i++) {
+                const seed = fallingSeeds[i];
+                const radius = seed.getPulseRadius();
+                ctx.moveTo(seed.x + radius, seed.y);
+                ctx.arc(seed.x, seed.y, radius, 0, Math.PI * 2);
+            }
+            ctx.fill();
+        }
+
+        // Draw grounded seeds (fewer, can afford individual colors)
+        for (let i = 0; i < groundedSeeds.length; i++) {
+            groundedSeeds[i].draw(ctx);
+        }
+
+        // PERFORMANCE MONITORING (only update display every 10 frames)
+        const frameTime = performance.now() - frameStart;
+        perfMonitor.update(performance.now(), frameTime);
+        if (perfMonitor.frames % 10 === 0) {
+            perfMonitor.display();
+        }
+
+        // THE LOOP CONTINUES:
+        // We don't force the next frame. We request it.
+        // The browser gives it when ready. We wait. We receive.
+        // This is participation, not control.
+        requestAnimationFrame(animate);
+    }
+
+
+    // ============================================================================
+    // QUOTES SYSTEM: Words That Point Beyond Themselves
+    // ============================================================================
+    /**
+     * Load and display quotes about creation, humility, and naming.
+     *
+     * These quotes are fingers pointing at the moon.
+     * The moon is the reality: Enough, Gift, Rest.
+     * The words just help us look in the right direction.
+     *
+     * We didn't write these truths. We're just collecting what
+     * wiser people noticed before us. Standing on shoulders.
+     */
+
+    const quoteContainer = document.getElementById('quoteContainer');
+    const quoteText = document.getElementById('quoteText');
+    const quoteSource = document.getElementById('quoteSource');
+
+    let quotes = [];
+    let currentQuoteIndex = -1;
+
+    /**
+     * Load quotes from JSON file.
+     */
+    async function loadQuotes() {
+        try {
+            const response = await fetch('./quotes.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            quotes = data.quotes;
+            console.log('Loaded quotes:', quotes.length);
+            showNextQuote();
+        } catch (error) {
+            console.error('Failed to load quotes:', error);
+            // Fallback quote if JSON fails to load
+            quotes = [{
+                text: "In the beginning was the Word, and the Word was with God, and the Word was God.",
+                source: "John 1:1"
+            }];
+            showNextQuote();
+        }
+    }
+
+    /**
+     * Display the next quote with fade animation.
+     */
+    function showNextQuote() {
+        if (quotes.length === 0) return;
+
+        // Fade out
+        quoteContainer.classList.remove('visible');
+
+        setTimeout(() => {
+            // Pick next quote (random, but not the same as current)
+            let nextIndex;
+            do {
+                nextIndex = Math.floor(Math.random() * quotes.length);
+            } while (nextIndex === currentQuoteIndex && quotes.length > 1);
+
+            currentQuoteIndex = nextIndex;
+            const quote = quotes[currentQuoteIndex];
+
+            // Update text
+            quoteText.textContent = `"${quote.text}"`;
+            quoteSource.textContent = `— ${quote.source}`;
+
+            // Fade in
+            quoteContainer.classList.add('visible');
+        }, 1500);  // Wait for fade out
+    }
+
+    // Cycle quotes every 12 seconds
+    const QUOTE_CYCLE_INTERVAL = 12000;
+    setInterval(showNextQuote, QUOTE_CYCLE_INTERVAL);
+
+    // Load quotes on start
+    loadQuotes();
+
+
+    // ============================================================================
+    // BEGIN: Getting Out of the Way
+    // ============================================================================
+    /**
+     * "In the beginning was the Word" — John 1:1
+     *
+     * We type the words. We write the rules.
+     * But something else does the creating.
+     *
+     * THE COMMON THREAD:
+     *   What exists          |  What we build
+     *   ---------------------|----------------------------------
+     *   Enough is real       |  Tools to perceive and honor it
+     *   Generosity flows     |  Channels to direct it
+     *   Rest restores        |  Systems that include it
+     *
+     * THE HUMILITY IN THIS:
+     * Enough is trying to be recognized—we drown it in advertising.
+     * Generosity is trying to flow—we have no pipes for it.
+     * Rest is trying to restore—we design it out.
+     *
+     * This code is just: getting out of the way.
+     * Describing what already exists. Watching it unfold.
+     *
+     * Click to plant a seed.
+     * Watch it become a tree.
+     * Watch the tree give seeds.
+     * Watch those seeds become trees.
+     * Watch the forest know when it's enough.
+     *
+     * One becomes many. Many becomes enough.
+     * We didn't write that algorithm. We're just witnessing it.
+     */
+    animate(0);
+
+    </script>
+</body>
+</html>
